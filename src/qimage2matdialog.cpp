@@ -47,6 +47,8 @@ void QImage2MatDialog::on_pushButton_clicked()
 	mat2qImageShow(_imageFilePath);
 
 	qImage2MatShow(qImage);
+
+	qImage2MatPtrShow(qImage);
 }
 
 void QImage2MatDialog::qimageShow(QImage& qImage, QGraphicsView*& graphView)
@@ -91,9 +93,26 @@ void QImage2MatDialog::qImage2MatShow(QImage& qImage)
 #if 1
 	if ( qImg2Mat.data )
 	{
-		cv::imshow("QImage to Mat", qImg2Mat);
-		cv::waitKey(0);
+		cv::imshow("QImage to Mat 1", qImg2Mat);
+//		cv::waitKey(0);
 //		cv::imwrite("E:\\lena.png", qImg2Mat);
+	}
+#endif
+}
+
+void QImage2MatDialog::qImage2MatPtrShow(QImage& qImage)
+{
+	int imageWidth  = qImage.width();
+	int imageHeight = qImage.height();
+
+	cv::Mat qImg2Mat = qImage2MatPtr(qImage);
+
+#if 1
+	if ( qImg2Mat.data )
+	{
+		cv::imshow("QImage to Mat 2", qImg2Mat);
+//		cv::waitKey(0);
+//		cv::imwrite("E:\\lena2.png", qImg2Mat);
 	}
 #endif
 }
@@ -163,21 +182,74 @@ cv::Mat QImage2MatDialog::qImage2Mat(QImage& qImg)
 	cv::Mat mat;
 	switch(qImg.format())  
 	{  
-		case QImage::Format_ARGB32:  
-		case QImage::Format_RGB32:  
-		case QImage::Format_ARGB32_Premultiplied:  
-			mat = cv::Mat(qImg.height(), qImg.width(), CV_8UC4, (void*)qImg.constBits(), qImg.bytesPerLine());  
-			break;  
-		case QImage::Format_RGB888:  
-			mat = cv::Mat(qImg.height(), qImg.width(), CV_8UC3, (void*)qImg.constBits(), qImg.bytesPerLine());  
-			cv::cvtColor(mat, mat, CV_BGR2RGB);  
-			break;  
-		case QImage::Format_Indexed8:  
-			mat = cv::Mat(qImg.height(), qImg.width(), CV_8UC1, (void*)qImg.constBits(), qImg.bytesPerLine());  
-			break;
-		default:
-			qDebug() << "Image Format Unknown!\n";
+	case QImage::Format_ARGB32:  
+	case QImage::Format_RGB32:  
+	case QImage::Format_ARGB32_Premultiplied:  
+		cv::Mat(qImg.height(), qImg.width(), CV_8UC4, (void*)qImg.constBits(), qImg.bytesPerLine()).copyTo(mat);  
+		break;  
+	case QImage::Format_RGB888:  
+		cv::Mat(qImg.height(), qImg.width(), CV_8UC3, (void*)qImg.constBits(), qImg.bytesPerLine()).copyTo(mat);  
+		cv::cvtColor(mat, mat, CV_BGR2RGB);  
+		break;  
+	case QImage::Format_Indexed8:  
+		cv::Mat(qImg.height(), qImg.width(), CV_8UC1, (void*)qImg.constBits(), qImg.bytesPerLine()).copyTo(mat);  
+		break;
+	default:
+		qDebug() << "Image Format Unknown!\n";
 	}  
+
+	return mat;
+}
+
+cv::Mat QImage2MatDialog::qImage2MatPtr(QImage& qImg)
+{
+	int qImgWidth  = qImg.width();
+	int qImgHeight = qImg.height();
+	int qImgDepth = qImg.depth();
+	int imgChannels = qImgDepth/8;
+	int byterPerLine = qImg.bytesPerLine();
+
+#if 0
+	qDebug() << qImg.format() << " " << qImg.depth();
+#endif
+
+	cv::Mat mat;
+
+	if ( qImg.format() == QImage::Format_ARGB32 || qImg.format() == QImage::Format_RGB888 || 
+		qImg.format() == QImage::Format_Indexed8 || qImg.format() == QImage::Format_ARGB32_Premultiplied )
+	{
+		cv::Mat(qImg.height(), qImg.width(), CV_MAKETYPE(CV_8U, qImgDepth/8), cv::Scalar::all(0)).copyTo(mat);
+		uchar* data_qimg = qImg.bits();
+		uchar* data_mat  = (uchar*)mat.data;
+
+		for ( int i=0; i<qImgHeight; i++ )
+			for ( int j=0; j<qImgWidth; j++ )
+				for ( int k=0; k<imgChannels; k++ )
+					data_mat[(i*qImgWidth+j)*imgChannels + k] = data_qimg[i*byterPerLine+j*imgChannels + k];
+
+		data_mat  = NULL;
+		data_qimg = NULL;
+	}
+	else if ( qImg.format() == QImage::Format_RGB32 )
+	{
+		cv::Mat(qImg.height(), qImg.width(), CV_MAKETYPE(CV_8U, 3), cv::Scalar::all(0)).copyTo(mat);
+		uchar* data_qimg = qImg.bits();
+		uchar* data_mat  = (uchar*)mat.data;
+
+		for ( int i=0; i<qImgHeight; i++ )
+		{
+			for ( int j=0; j<qImgWidth; j++ )
+			{
+				data_mat[(i*qImgWidth+j)*3]   = data_qimg[i*byterPerLine+j*4];   // B
+				data_mat[(i*qImgWidth+j)*3+1] = data_qimg[i*byterPerLine+j*4+1]; // G
+				data_mat[(i*qImgWidth+j)*3+2] = data_qimg[i*byterPerLine+j*4+2]; // R
+			}
+		}
+	}
+	else
+	{
+		qDebug() << "Image Format Unknown!\n";
+	}
 
 	return mat;
 }

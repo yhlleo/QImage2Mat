@@ -32,9 +32,13 @@ public:
 
 	void qImage2MatShow(QImage& qImage);
 
+	void qImage2MatPtrShow(QImage& qImage);
+
 	QImage mat2QImage(cv::Mat& image);
 
 	cv::Mat qImage2Mat(QImage& qImg);
+
+	cv::Mat qImage2MatPtr(QImage& qImg);
 
 	bool isPicture(QString& imagePath);
 
