@@ -7,6 +7,7 @@ The conversion between Qt QImage and OpenCV Mat.
 
  - `VS2010`
  - `CMake (version >= 2.8.3)`
+ - `Qt (version 4.8.6)`
 
 运行结果如图：
 
